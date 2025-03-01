@@ -1,9 +1,9 @@
 import logging
 from functools import reduce
 
-import talib as ta
+from talib import abstract as  ta
+import pandas_ta as pta
 from pandas import DataFrame
-from technical import qtpylib
 
 from freqtrade.strategy import IStrategy
 
@@ -75,7 +75,29 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
         """
 
-        dataframe["%-stochrsi"] = ta.STOCHRSI(dataframe, timeperiod=period)
+        dataframe["%-stochrsi-period"] = ta.STOCHRSI(dataframe, timeperiod=period)
+
+        # dataframe["%-adx-period"] = ta.ADX(dataframe, timeperiod=period)
+        # dataframe["%-sma-period"] = ta.SMA(dataframe, timeperiod=period)
+        # dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
+        #
+        # bollinger = qtpylib.bollinger_bands(
+        #     qtpylib.typical_price(dataframe), window=period, stds=2.2
+        # )
+        # dataframe["bb_lowerband-period"] = bollinger["lower"]
+        # dataframe["bb_middleband-period"] = bollinger["mid"]
+        # dataframe["bb_upperband-period"] = bollinger["upper"]
+        #
+        # dataframe["%-bb_width-period"] = (
+        #     dataframe["bb_upperband-period"] - dataframe["bb_lowerband-period"]
+        # ) / dataframe["bb_middleband-period"]
+        # dataframe["%-close-bb_lower-period"] = dataframe["close"] / dataframe["bb_lowerband-period"]
+        #
+        # dataframe["%-roc-period"] = ta.ROC(dataframe, timeperiod=period)
+        #
+        # dataframe["%-relative_volume-period"] = (
+        #     dataframe["volume"] / dataframe["volume"].rolling(period).mean()
+        # )
 
         return dataframe
 
@@ -112,7 +134,12 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-ema-200"] = ta.EMA(dataframe, timeperiod=200)
         """
+#        dataframe["%-pct-change"] = dataframe["close"].pct_change()
+        dataframe["%-raw_volume"] = dataframe["volume"]
+        dataframe["%-raw_price"] = dataframe["close"]
         dataframe["%-macd"] = ta.MACD(dataframe)
+        dataframe["%-dpo"] = pta.dpo(dataframe["close"], lookahead=False)
+        dataframe["%-donchian"] = pta.donchian(dataframe["high"], dataframe["low"])
 
         return dataframe
 
@@ -144,8 +171,8 @@ class XGBoostClassifierStrategy(IStrategy):
         :param metadata: metadata of current pair
         usage example: dataframe["%-day_of_week"] = (dataframe["date"].dt.dayofweek + 1) / 7
         """
-        dataframe["%-day_of_week"] = dataframe["date"].dt.dayofweek
-        dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
+        # dataframe["%-day_of_week"] = dataframe["date"].dt.dayofweek
+        # dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
         return dataframe
 
     def set_freqai_targets(self, dataframe: DataFrame, metadata: dict, **kwargs) -> DataFrame:
