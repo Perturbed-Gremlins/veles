@@ -10,7 +10,6 @@ user_data/*
 !user_data/notebooks
 !user_data/models
 !user_data/freqaimodels
-user_data/freqaimodels/*
 user_data/models/*
 user_data/notebooks/*
 freqtrade-plot.html
@@ -119,3 +118,4 @@ target/
 docker-compose-*.yml
 !/user_data/config/
 !/user_data/strategy/
+!/user_data/freqaimodels/XGBoostBinaryClassifier.py

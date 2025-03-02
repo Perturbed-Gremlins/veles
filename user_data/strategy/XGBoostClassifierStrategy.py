@@ -3,6 +3,7 @@ from functools import reduce
 
 from talib import abstract as  ta
 import pandas_ta as pta
+import numpy as np
 from pandas import DataFrame
 
 from freqtrade.strategy import IStrategy
@@ -13,16 +14,7 @@ logger = logging.getLogger(__name__)
 
 class XGBoostClassifierStrategy(IStrategy):
     """
-    Example strategy showing how the user connects their own
-    IFreqaiModel to the strategy.
-
-    Warning! This is a showcase of functionality,
-    which means that it is designed to show various functions of FreqAI
-    and it runs on all computers. We use this showcase to help users
-    understand how to build a strategy, and we use it as a benchmark
-    to help debug possible problems.
-
-    This means this is *not* meant to be run live in production.
+    This is a basic XGBoostClassifierStrategy based on a certain set of indicators and oscillators
     """
 
     minimal_roi = {"0": 0.1, "240": -1}
@@ -77,28 +69,6 @@ class XGBoostClassifierStrategy(IStrategy):
 
         dataframe["%-stochrsi-period"] = ta.STOCHRSI(dataframe, timeperiod=period)
 
-        # dataframe["%-adx-period"] = ta.ADX(dataframe, timeperiod=period)
-        # dataframe["%-sma-period"] = ta.SMA(dataframe, timeperiod=period)
-        # dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
-        #
-        # bollinger = qtpylib.bollinger_bands(
-        #     qtpylib.typical_price(dataframe), window=period, stds=2.2
-        # )
-        # dataframe["bb_lowerband-period"] = bollinger["lower"]
-        # dataframe["bb_middleband-period"] = bollinger["mid"]
-        # dataframe["bb_upperband-period"] = bollinger["upper"]
-        #
-        # dataframe["%-bb_width-period"] = (
-        #     dataframe["bb_upperband-period"] - dataframe["bb_lowerband-period"]
-        # ) / dataframe["bb_middleband-period"]
-        # dataframe["%-close-bb_lower-period"] = dataframe["close"] / dataframe["bb_lowerband-period"]
-        #
-        # dataframe["%-roc-period"] = ta.ROC(dataframe, timeperiod=period)
-        #
-        # dataframe["%-relative_volume-period"] = (
-        #     dataframe["volume"] / dataframe["volume"].rolling(period).mean()
-        # )
-
         return dataframe
 
     def feature_engineering_expand_basic(
@@ -134,7 +104,6 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-ema-200"] = ta.EMA(dataframe, timeperiod=200)
         """
-#        dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-raw_volume"] = dataframe["volume"]
         dataframe["%-raw_price"] = dataframe["close"]
         dataframe["%-macd"] = ta.MACD(dataframe)
@@ -171,8 +140,6 @@ class XGBoostClassifierStrategy(IStrategy):
         :param metadata: metadata of current pair
         usage example: dataframe["%-day_of_week"] = (dataframe["date"].dt.dayofweek + 1) / 7
         """
-        # dataframe["%-day_of_week"] = dataframe["date"].dt.dayofweek
-        # dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
         return dataframe
 
     def set_freqai_targets(self, dataframe: DataFrame, metadata: dict, **kwargs) -> DataFrame:
@@ -193,37 +160,11 @@ class XGBoostClassifierStrategy(IStrategy):
         :param metadata: metadata of current pair
         usage example: dataframe["&-target"] = dataframe["close"].shift(-1) / dataframe["close"]
         """
-        dataframe["&-s_close"] = (
-            dataframe["close"]
-            .shift(-self.freqai_info["feature_parameters"]["label_period_candles"])
-            .rolling(self.freqai_info["feature_parameters"]["label_period_candles"])
-            .mean()
-            / dataframe["close"]
-            - 1
-        )
 
-        # Classifiers are typically set up with strings as targets:
-        # df['&s-up_or_down'] = np.where( df["close"].shift(-100) >
-        #                                 df["close"], 'up', 'down')
+        target_candles = dataframe["close"].shift(-self.freqai_info["feature_parameters"]["label_period_candles"])
+        is_bigger_mask = target_candles > dataframe["close"]
 
-        # If user wishes to use multiple targets, they can add more by
-        # appending more columns with '&'. User should keep in mind that multi targets
-        # requires a multioutput prediction model such as
-        # freqai/prediction_models/CatboostRegressorMultiTarget.py,
-        # freqtrade trade --freqaimodel CatboostRegressorMultiTarget
-
-        # df["&-s_range"] = (
-        #     df["close"]
-        #     .shift(-self.freqai_info["feature_parameters"]["label_period_candles"])
-        #     .rolling(self.freqai_info["feature_parameters"]["label_period_candles"])
-        #     .max()
-        #     -
-        #     df["close"]
-        #     .shift(-self.freqai_info["feature_parameters"]["label_period_candles"])
-        #     .rolling(self.freqai_info["feature_parameters"]["label_period_candles"])
-        #     .min()
-        # )
-
+        dataframe['&s-up_or_down'] =  np.where(is_bigger_mask, "up", "down")
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
