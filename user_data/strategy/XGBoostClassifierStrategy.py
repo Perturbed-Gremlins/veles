@@ -1,6 +1,7 @@
 import logging
 from functools import reduce
 
+import pandas as pd
 from talib import abstract as  ta
 import pandas_ta as pta
 import numpy as np
@@ -67,7 +68,7 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
         """
 
-        dataframe["%-stochrsi-period"] = ta.STOCHRSI(dataframe, timeperiod=period)
+        dataframe["%-stochrsi-k-period"], dataframe["%-stochrsi-d-period"] = ta.STOCHRSI(dataframe, timeperiod=period)
 
         return dataframe
 
@@ -106,9 +107,14 @@ class XGBoostClassifierStrategy(IStrategy):
         """
         dataframe["%-raw_volume"] = dataframe["volume"]
         dataframe["%-raw_price"] = dataframe["close"]
-        dataframe["%-macd"] = ta.MACD(dataframe)
+        dataframe["%-macd"], dataframe["%-macd-signal"], dataframe["%-macd-hist"] = ta.MACD(dataframe)
         dataframe["%-dpo"] = pta.dpo(dataframe["close"], lookahead=False)
-        dataframe["%-donchian"] = pta.donchian(dataframe["high"], dataframe["low"])
+
+        donchian_df: pd.DataFrame = pta.donchian(dataframe["high"], dataframe["low"])
+        donchian_colnames = donchian_df.columns
+        for donchian_colname in donchian_colnames:
+            freq_colname = "%-" + donchian_colname
+            dataframe[freq_colname] = donchian_df[donchian_colname]
 
         return dataframe
 
