@@ -37,6 +37,7 @@ class XGBoostClassifier(BaseClassifierModel):
         X = data_dictionary["train_features"].to_numpy()
         y = data_dictionary["train_labels"].to_numpy()[:, 0]
 
+
         le = LabelEncoder()
         if not is_integer_dtype(y):
             y = pd.Series(le.fit_transform(y), dtype="int64")

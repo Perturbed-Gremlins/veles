@@ -67,9 +67,8 @@ class XGBoostClassifierStrategy(IStrategy):
         :param metadata: metadata of current pair
         dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
         """
-
-        dataframe["%-stochrsi-k-period"], dataframe["%-stochrsi-d-period"] = ta.STOCHRSI(dataframe, timeperiod=period)
-
+        stochrsi_result = ta.STOCHRSI(dataframe, timeperiod=period)
+        dataframe["%-stochrsi-k-period"], dataframe["%-stochrsi-d-period"] = stochrsi_result["fastk"], stochrsi_result["fastd"]
         return dataframe
 
     def feature_engineering_expand_basic(
@@ -107,7 +106,9 @@ class XGBoostClassifierStrategy(IStrategy):
         """
         dataframe["%-raw_volume"] = dataframe["volume"]
         dataframe["%-raw_price"] = dataframe["close"]
-        dataframe["%-macd"], dataframe["%-macd-signal"], dataframe["%-macd-hist"] = ta.MACD(dataframe)
+
+        macd_results = ta.MACD(dataframe)
+        dataframe["%-macd"], dataframe["%-macd-signal"], dataframe["%-macd-hist"] = macd_results["macd"], macd_results["macdsignal"], macd_results["macdhist"]
         dataframe["%-dpo"] = pta.dpo(dataframe["close"], lookahead=False)
 
         donchian_df: pd.DataFrame = pta.donchian(dataframe["high"], dataframe["low"])
@@ -188,7 +189,7 @@ class XGBoostClassifierStrategy(IStrategy):
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
         enter_long_conditions = [
             df["do_predict"] == 1,
-            df["&-s_close"] > 0.01,
+            df["&s-up_or_down"] == 'up',
         ]
 
         if enter_long_conditions:
@@ -198,7 +199,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         enter_short_conditions = [
             df["do_predict"] == 1,
-            df["&-s_close"] < -0.01,
+            df["&s-up_or_down"] == "down",
         ]
 
         if enter_short_conditions:
@@ -209,11 +210,11 @@ class XGBoostClassifierStrategy(IStrategy):
         return df
 
     def populate_exit_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
-        exit_long_conditions = [df["do_predict"] == 1, df["&-s_close"] < 0]
+        exit_long_conditions = [df["do_predict"] == 1, df["&s-up_or_down"] == "down"]
         if exit_long_conditions:
             df.loc[reduce(lambda x, y: x & y, exit_long_conditions), "exit_long"] = 1
 
-        exit_short_conditions = [df["do_predict"] == 1, df["&-s_close"] > 0]
+        exit_short_conditions = [df["do_predict"] == 1, df["&s-up_or_down"] == 'up']
         if exit_short_conditions:
             df.loc[reduce(lambda x, y: x & y, exit_short_conditions), "exit_short"] = 1
 
