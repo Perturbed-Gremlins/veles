@@ -172,6 +172,9 @@ class XGBoostClassifierStrategy(IStrategy):
         is_bigger_mask = target_candles > dataframe["close"]
 
         dataframe['&s-up_or_down'] =  np.where(is_bigger_mask, "up", "down")
+
+        print(dataframe.isna().sum())
+
         return dataframe
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:

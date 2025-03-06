@@ -201,5 +201,4 @@ def get_tb_logger(model_type: str, path: Path, activate: bool) -> Any:
         return TBLogger(path, activate)
     else:
         from freqtrade.freqai.tensorboard.base_tensorboard import BaseTensorboardLogger
-
         return BaseTensorboardLogger(path, activate)
