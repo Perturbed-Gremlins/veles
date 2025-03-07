@@ -170,10 +170,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         target_candles = dataframe["close"].shift(-self.freqai_info["feature_parameters"]["label_period_candles"])
         is_bigger_mask = target_candles > dataframe["close"]
-
         dataframe['&s-up_or_down'] =  np.where(is_bigger_mask, "up", "down")
-
-        print(dataframe.isna().sum())
 
         return dataframe
 

@@ -60,10 +60,16 @@ class XGBoostClassifier(BaseClassifierModel):
 
         print(X, y)
 
-        model = XGBClassifier(**self.model_training_parameters)
+        self.model_training_parameters["max_depth"]= 6
+        self.model_training_parameters["eta"]=0.3
+        self.model_training_parameters["gamma"] = 1
+        model = XGBClassifier(**self.model_training_parameters, verbosity=2)
 
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
+        print(model.score(X, y))
+        print(model.score(*eval_set[0]))
+        raise NotImplementedError()
         return model
 
     def predict(
