@@ -58,18 +58,13 @@ class XGBoostClassifier(BaseClassifierModel):
 
         init_model = self.get_init_model(dk.pair)
 
-        print(X, y)
 
-        self.model_training_parameters["max_depth"]= 6
-        self.model_training_parameters["eta"]=0.3
-        self.model_training_parameters["gamma"] = 1
-        model = XGBClassifier(**self.model_training_parameters, verbosity=2)
+        self.model_training_parameters["objective"]="binary:logistic"
+        self.model_training_parameters["eval_metric"]="auc"
+        model = XGBClassifier(**self.model_training_parameters )
 
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
-        print(model.score(X, y))
-        print(model.score(*eval_set[0]))
-        raise NotImplementedError()
         return model
 
     def predict(
@@ -84,8 +79,8 @@ class XGBoostClassifier(BaseClassifierModel):
         data (NaNs) or felt uncertain about data (PCA and DI index)
         """
 
-        (pred_df, dk.do_predict) = super().predict(unfiltered_df, dk, **kwargs)
-
+        (pred_df, dk.do_predict) = super().predict(unfiltered_df, dk, best_iteration=True, **kwargs)
+        print(pred_df)
         le = LabelEncoder()
         label = dk.label_list[0]
         labels_before = list(dk.data["labels_std"].keys())

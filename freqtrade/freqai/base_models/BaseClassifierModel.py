@@ -103,6 +103,7 @@ class BaseClassifierModel(IFreqaiModel):
 
         dk.data_dictionary["prediction_features"] = filtered_df
 
+        print(filtered_df)
         dk.data_dictionary["prediction_features"], outliers, _ = dk.feature_pipeline.transform(
             dk.data_dictionary["prediction_features"], outlier_check=True
         )

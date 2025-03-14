@@ -35,7 +35,7 @@ class XGBoostClassifierStrategy(IStrategy):
     use_exit_signal = True
     # this is the maximum period fed to talib (timeframe independent)
     startup_candle_count: int = 40
-    can_short = True
+    can_short = False
 
     def feature_engineering_expand_all(
         self, dataframe: DataFrame, period: int, metadata: dict, **kwargs
@@ -111,11 +111,12 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-macd"], dataframe["%-macd-signal"], dataframe["%-macd-hist"] = macd_results["macd"], macd_results["macdsignal"], macd_results["macdhist"]
         dataframe["%-dpo"] = pta.dpo(dataframe["close"], lookahead=False)
 
-        donchian_df: pd.DataFrame = pta.donchian(dataframe["high"], dataframe["low"])
-        donchian_colnames = donchian_df.columns
-        for donchian_colname in donchian_colnames:
-            freq_colname = "%-" + donchian_colname
-            dataframe[freq_colname] = donchian_df[donchian_colname]
+        donchian_df = pta.donchian(dataframe["high"], dataframe["low"])
+        if isinstance(donchian_df, pd.DataFrame):
+            donchian_colnames = donchian_df.columns
+            for donchian_colname in donchian_colnames:
+                freq_colname = "%-" + donchian_colname
+                dataframe[freq_colname] = donchian_df[donchian_colname]
 
         return dataframe
 
