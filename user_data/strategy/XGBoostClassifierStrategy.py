@@ -190,7 +190,7 @@ class XGBoostClassifierStrategy(IStrategy):
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
         enter_long_conditions = [
             df["do_predict"] == 1,
-            df["&s-up_or_down"] == 'up',
+            df["up"] >0.6,
         ]
 
         if enter_long_conditions:
@@ -200,7 +200,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         enter_short_conditions = [
             df["do_predict"] == 1,
-            df["&s-up_or_down"] == "down",
+            df["down"] > 0.6,
         ]
 
         if enter_short_conditions:
@@ -211,11 +211,11 @@ class XGBoostClassifierStrategy(IStrategy):
         return df
 
     def populate_exit_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
-        exit_long_conditions = [df["do_predict"] == 1, df["&s-up_or_down"] == "down"]
+        exit_long_conditions = [df["do_predict"] == 1, df["down"] > 0.6]
         if exit_long_conditions:
             df.loc[reduce(lambda x, y: x & y, exit_long_conditions), "exit_long"] = 1
 
-        exit_short_conditions = [df["do_predict"] == 1, df["&s-up_or_down"] == 'up']
+        exit_short_conditions = [df["do_predict"] == 1, df["up"] > 0.6]
         if exit_short_conditions:
             df.loc[reduce(lambda x, y: x & y, exit_short_conditions), "exit_short"] = 1
 

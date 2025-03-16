@@ -78,9 +78,7 @@ class XGBoostClassifier(BaseClassifierModel):
         :do_predict: np.array of 1s and 0s to indicate places where freqai needed to remove
         data (NaNs) or felt uncertain about data (PCA and DI index)
         """
-
         (pred_df, dk.do_predict) = super().predict(unfiltered_df, dk, best_iteration=True, **kwargs)
-        print(pred_df)
         le = LabelEncoder()
         label = dk.label_list[0]
         labels_before = list(dk.data["labels_std"].keys())
@@ -89,5 +87,4 @@ class XGBoostClassifier(BaseClassifierModel):
         pred_df = pred_df.rename(
             columns={labels_after[i]: labels_before[i] for i in range(len(labels_before))}
         )
-
         return (pred_df, dk.do_predict)
