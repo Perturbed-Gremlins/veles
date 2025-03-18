@@ -104,6 +104,8 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-ema-200"] = ta.EMA(dataframe, timeperiod=200)
         """
+
+        # we believe that volume and closing price is helpful for predicting next price
         dataframe["%-raw_volume"] = dataframe["volume"]
         dataframe["%-raw_price"] = dataframe["close"]
 

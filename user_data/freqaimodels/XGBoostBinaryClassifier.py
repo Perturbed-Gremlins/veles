@@ -16,6 +16,12 @@ from freqtrade.freqai.data_kitchen import FreqaiDataKitchen
 logger = logging.getLogger(__name__)
 
 
+TRAIN_FEATURES_KEY = "train_features"
+TRAIN_LABELS_KEY = "train_labels"
+TEST_FEATURES_KEY = "test_features"
+TEST_LABELS_KEY = "test_labels"
+
+
 class XGBoostClassifier(BaseClassifierModel):
     """
     User created prediction model. The class inherits IFreqaiModel, which
@@ -26,6 +32,29 @@ class XGBoostClassifier(BaseClassifierModel):
     top level config.json file.
     """
 
+    @staticmethod
+    def convert_data_to_sk(features_df: pd.DataFrame, labels_df: pd.DataFrame):
+        """
+        This function acts as a transformer of data dictionary format (features and labels) to the
+        sk compatible format. Also converts the labels to numeric format if it's not already
+        """
+
+        # getting the pure numpy arrays of features
+        features_array = features_df.to_numpy()
+
+        # here we need to collapse the one-sized columns
+        labels_array_collapsed = labels_df.to_numpy()[:, 0]
+
+        le = LabelEncoder()
+
+        # enable conversion if the target non numeric (integer)
+        if not is_integer_dtype(labels_array_collapsed):
+            numeric_labels = le.fit_transform(labels_array_collapsed)
+            labels_array_collapsed = pd.Series(numeric_labels, dtype="int64")
+
+        return features_array,labels_array_collapsed
+
+
     def fit(self, data_dictionary: dict, dk: FreqaiDataKitchen, **kwargs) -> Any:
         """
         User sets up the training and test data to fit their desired model here
@@ -34,23 +63,20 @@ class XGBoostClassifier(BaseClassifierModel):
         :param dk: The datakitchen object for the current coin/model
         """
 
-        X = data_dictionary["train_features"].to_numpy()
-        y = data_dictionary["train_labels"].to_numpy()[:, 0]
+        train_features_df = data_dictionary[TRAIN_FEATURES_KEY]
+        train_labels_df = data_dictionary[TRAIN_LABELS_KEY]
 
-
-
-        le = LabelEncoder()
-        if not is_integer_dtype(y):
-            y = pd.Series(le.fit_transform(y), dtype="int64")
-
-        if self.freqai_info.get("data_split_parameters", {}).get("test_size", 0.1) == 0:
+        X, y = self.convert_data_to_sk(train_features_df, train_labels_df)
+        # checking the configuration of a test size, if none, then setting appropriate kw
+        # otherwise form same set but for eval set
+        conf_test_size = self.freqai_info.get("data_split_parameters", {}).get("test_size", 0.1)
+        if conf_test_size == 0:
             eval_set = None
         else:
-            test_features = data_dictionary["test_features"].to_numpy()
-            test_labels = data_dictionary["test_labels"].to_numpy()[:, 0]
+            test_features_df = data_dictionary[TEST_FEATURES_KEY]
+            test_labels_df = data_dictionary[TEST_LABELS_KEY]
 
-            if not is_integer_dtype(test_labels):
-                test_labels = pd.Series(le.transform(test_labels), dtype="int64")
+            test_features, test_labels = self.convert_data_to_sk(test_features_df, test_labels_df)
 
             eval_set = [(test_features, test_labels)]
 
