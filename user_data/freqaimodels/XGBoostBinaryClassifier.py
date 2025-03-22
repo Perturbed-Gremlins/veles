@@ -91,11 +91,11 @@ class XGBoostClassifier(BaseClassifierModel):
         init_model = self.get_init_model(dk.pair)
 
         early_stop = EarlyStopping(
-            rounds=5, metric_name='logloss', data_name='validation_0', save_best=True
+            rounds=5, metric_name='auc', data_name='validation_0', save_best=True
         )
 
         # loading the params, and fititng the model
-        model = XGBClassifier(**self.model_training_parameters )
+        model = XGBClassifier(**self.model_training_parameters, callbacks=[early_stop])
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
         return model
