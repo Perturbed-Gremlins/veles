@@ -83,7 +83,10 @@
             "test_size": 0.1,
             "random_state": 1292
         },
-        "model_training_parameters": {}
+        "model_training_parameters": {
+            "objective": "binary:logistic",
+            "eval_metric": "auc"
+        }
     },
 
     "api_server": {

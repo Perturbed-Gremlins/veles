@@ -8,6 +8,7 @@ from pandas import DataFrame
 from pandas.api.types import is_integer_dtype
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
+from xgboost.callback import EarlyStopping
 
 from freqtrade.freqai.base_models.BaseClassifierModel import BaseClassifierModel
 from freqtrade.freqai.data_kitchen import FreqaiDataKitchen
@@ -37,6 +38,8 @@ class XGBoostClassifier(BaseClassifierModel):
         """
         This function acts as a transformer of data dictionary format (features and labels) to the
         sk compatible format. Also converts the labels to numeric format if it's not already
+        :param features_df containing features, all numeric
+        :param labels_df contains labels as columns, possible numeric and string-like
         """
 
         # getting the pure numpy arrays of features
@@ -67,6 +70,7 @@ class XGBoostClassifier(BaseClassifierModel):
         train_labels_df = data_dictionary[TRAIN_LABELS_KEY]
 
         X, y = self.convert_data_to_sk(train_features_df, train_labels_df)
+
         # checking the configuration of a test size, if none, then setting appropriate kw
         # otherwise form same set but for eval set
         conf_test_size = self.freqai_info.get("data_split_parameters", {}).get("test_size", 0.1)
@@ -80,15 +84,18 @@ class XGBoostClassifier(BaseClassifierModel):
 
             eval_set = [(test_features, test_labels)]
 
+        # getting the weights for the data points (not traditional weighting!)
         train_weights = data_dictionary["train_weights"]
 
+        # loading the previous or initial model
         init_model = self.get_init_model(dk.pair)
 
+        early_stop = EarlyStopping(
+            rounds=5, metric_name='logloss', data_name='validation_0', save_best=True
+        )
 
-        self.model_training_parameters["objective"]="binary:logistic"
-        self.model_training_parameters["eval_metric"]="auc"
+        # loading the params, and fititng the model
         model = XGBClassifier(**self.model_training_parameters )
-
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
         return model
@@ -104,7 +111,38 @@ class XGBoostClassifier(BaseClassifierModel):
         :do_predict: np.array of 1s and 0s to indicate places where freqai needed to remove
         data (NaNs) or felt uncertain about data (PCA and DI index)
         """
-        (pred_df, dk.do_predict) = super().predict(unfiltered_df, dk, best_iteration=True, **kwargs)
+
+
+        dk.find_features(unfiltered_df)
+        filtered_df, _ = dk.filter_features(
+            unfiltered_df, dk.training_features_list, training_filter=False
+        )
+
+        dk.data_dictionary["prediction_features"] = filtered_df
+
+        dk.data_dictionary["prediction_features"], outliers, _ = dk.feature_pipeline.transform(
+            dk.data_dictionary["prediction_features"], outlier_check=True
+        )
+
+        predictions = self.model.predict(dk.data_dictionary["prediction_features"])
+        if self.CONV_WIDTH == 1:
+            predictions = np.reshape(predictions, (-1, len(dk.label_list)))
+
+        pred_df = DataFrame(predictions, columns=dk.label_list)
+
+        predictions_prob = self.model.predict_proba(dk.data_dictionary["prediction_features"])
+        if self.CONV_WIDTH == 1:
+            predictions_prob = np.reshape(predictions_prob, (-1, len(self.model.classes_)))
+        pred_df_prob = DataFrame(predictions_prob, columns=self.model.classes_)
+
+        pred_df = pd.concat([pred_df, pred_df_prob], axis=1)
+
+        if dk.feature_pipeline["di"]:
+            dk.DI_values = dk.feature_pipeline["di"].di_values
+        else:
+            dk.DI_values = np.zeros(outliers.shape[0])
+        dk.do_predict = outliers
+
         le = LabelEncoder()
         label = dk.label_list[0]
         labels_before = list(dk.data["labels_std"].keys())
