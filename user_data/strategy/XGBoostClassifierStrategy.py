@@ -145,21 +145,19 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-raw_volume"] = dataframe["volume"]
         dataframe["%-raw_price"] = dataframe["close"]
 
+        dataframe['%-mean-volume'] = dataframe['volume'].rolling(12).mean()
+
+
         macd_results = ta.MACD(dataframe)
         dataframe["%-macd"], dataframe["%-macd-signal"], dataframe["%-macd-hist"] = macd_results["macd"], macd_results["macdsignal"], macd_results["macdhist"]
         dataframe["%-dpo"] = pta.dpo(dataframe["close"], lookahead=False)
 
         # ADX
-        dataframe['%-adx'] = ta.ADX(dataframe)
         dataframe['%-slowadx'] = ta.ADX(dataframe, 35)
 
         # Commodity Channel Index: values Oversold:<-100, Overbought:>100
         dataframe['%-cci'] = ta.CCI(dataframe)
 
-        # Stoch
-        stoch = ta.STOCHF(dataframe, 5)
-        dataframe['%-fastd'] = stoch['fastd']
-        dataframe['%-fastk'] = stoch['fastk']
 
 
 
@@ -167,35 +165,6 @@ class XGBoostClassifierStrategy(IStrategy):
         slowstoch = ta.STOCHF(dataframe, 50)
         dataframe['%-slowfastd'] = slowstoch['fastd']
         dataframe['%-slowfastk'] = slowstoch['fastk']
-
-        # heiknashi
-
-        heikinashi = qtpylib.heikinashi(dataframe)
-        dataframe['%-ha_open'] = heikinashi['open']
-        dataframe['%-ha_close'] = heikinashi['close']
-        dataframe['%-ha_high'] = heikinashi['high']
-        dataframe['%-ha_low'] = heikinashi['low']
-
-        # Minus Directional Indicator / Movement
-        dataframe["%-minus_di"] = ta.MINUS_DI(dataframe)
-
-
-        # RSI
-        dataframe["%-rsi"] = ta.RSI(dataframe)
-
-
-        # TEMA - Triple Exponential Moving Average
-        dataframe["%-tema"] = ta.TEMA(dataframe, timeperiod=9)
-
-
-        # EMA - Exponential Moving Average
-        dataframe['%-ema5'] = ta.EMA(dataframe, timeperiod=5)
-        dataframe['%-ema20'] = ta.EMA(dataframe, timeperiod=20)
-        dataframe['%-ema50'] = ta.EMA(dataframe, timeperiod=50)
-        dataframe['%-ema100'] = ta.EMA(dataframe, timeperiod=100)
-
-
-        dataframe['%-mean-volume'] = dataframe['volume'].rolling(12).mean()
 
 
         donchian_df = pta.donchian(dataframe["high"], dataframe["low"])
@@ -270,7 +239,45 @@ class XGBoostClassifierStrategy(IStrategy):
         # the target mean/std values for each of the labels created by user in
         # `set_freqai_targets()` for each training period.
 
+
+
+
         dataframe = self.freqai.start(dataframe, metadata, self)
+
+        # heiknashi
+
+        heikinashi = qtpylib.heikinashi(dataframe)
+        dataframe['ha_open'] = heikinashi['open']
+        dataframe['ha_close'] = heikinashi['close']
+        dataframe['ha_high'] = heikinashi['high']
+        dataframe['ha_low'] = heikinashi['low']
+
+        # Minus Directional Indicator / Movement
+        dataframe["minus_di"] = ta.MINUS_DI(dataframe)
+
+
+        # RSI
+        dataframe["rsi"] = ta.RSI(dataframe)
+
+
+        # TEMA - Triple Exponential Moving Average
+        dataframe["tema"] = ta.TEMA(dataframe, timeperiod=9)
+
+
+        # EMA - Exponential Moving Average
+        dataframe['ema5'] = ta.EMA(dataframe, timeperiod=5)
+        dataframe['ema20'] = ta.EMA(dataframe, timeperiod=20)
+        dataframe['ema50'] = ta.EMA(dataframe, timeperiod=50)
+        dataframe['ema100'] = ta.EMA(dataframe, timeperiod=100)
+
+        dataframe['adx'] = ta.ADX(dataframe)
+
+
+        # Stoch
+        stoch = ta.STOCHF(dataframe, 5)
+        dataframe['fastd'] = stoch['fastd']
+        dataframe['fastk'] = stoch['fastk']
+
 
 
         return dataframe
@@ -278,7 +285,7 @@ class XGBoostClassifierStrategy(IStrategy):
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
         enter_long_conditions = [
             df["do_predict"] == 1,
-            df["up"] >0.6,
+            df["up"] >0.7,
         ]
 
         if enter_long_conditions:
@@ -288,7 +295,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         enter_short_conditions = [
             df["do_predict"] == 1,
-            df["down"] > 0.6,
+            df["down"] > 0.7,
         ]
 
         if enter_short_conditions:
@@ -334,19 +341,19 @@ class XGBoostClassifierStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                qtpylib.crossed_above(dataframe['%-ema50'], dataframe['%-ema100'])
-                &(dataframe['%-ha_close'] < dataframe['%-ema20'])
-                &(dataframe['%-ha_open'] > dataframe['%-ha_close'])
+                qtpylib.crossed_above(dataframe['ema50'], dataframe['ema100'])
+                &(dataframe['ha_close'] < dataframe['ema20'])
+                &(dataframe['ha_open'] > dataframe['ha_close'])
                 |
                 (
-                    (qtpylib.crossed_above(dataframe["%-rsi"], self.sell_rsi.value))
-                    | (qtpylib.crossed_above(dataframe["%-fastd"], FAST_D))
+                    (qtpylib.crossed_above(dataframe["rsi"], self.sell_rsi.value))
+                    | (qtpylib.crossed_above(dataframe["fastd"], FAST_D))
                 )
-                & (dataframe["%-tema"] < dataframe["%-tema"].shift(FALING_TEMA_PERIOD))
-                | (dataframe["%-adx"] > ADX)
-                & (dataframe["%-minus_di"] > MINUS_DI)
+                & (dataframe["tema"] < dataframe["tema"].shift(FALING_TEMA_PERIOD))
+                | (dataframe["adx"] > ADX)
+                & (dataframe["minus_di"] > MINUS_DI)
 
-            ),
+            ) ,
             'exit_long'] = 1
         return dataframe
 
