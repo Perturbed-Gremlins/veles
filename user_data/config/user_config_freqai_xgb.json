@@ -85,7 +85,7 @@
         },
         "model_training_parameters": {
             "objective": "binary:logistic",
-            "eval_metric": "auc"
+            "eval_metric": ["auc", "logloss", "error"]
         }
     },
 

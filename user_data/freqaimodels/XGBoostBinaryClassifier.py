@@ -9,6 +9,8 @@ from pandas.api.types import is_integer_dtype
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 from xgboost.callback import EarlyStopping
+from freqtrade.freqai.tensorboard import TBCallback
+
 
 from freqtrade.freqai.base_models.BaseClassifierModel import BaseClassifierModel
 from freqtrade.freqai.data_kitchen import FreqaiDataKitchen
@@ -95,7 +97,7 @@ class XGBoostClassifier(BaseClassifierModel):
         )
 
         # loading the params, and fititng the model
-        model = XGBClassifier(**self.model_training_parameters, callbacks=[early_stop])
+        model = XGBClassifier(**self.model_training_parameters, callbacks=[early_stop, TBCallback(dk.data_path)])
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
         return model
