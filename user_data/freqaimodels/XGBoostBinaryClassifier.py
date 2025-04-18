@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 from xgboost.callback import EarlyStopping
 from freqtrade.freqai.tensorboard import TBCallback
+import shap
 
 
 from freqtrade.freqai.base_models.BaseClassifierModel import BaseClassifierModel
@@ -153,4 +154,9 @@ class XGBoostClassifier(BaseClassifierModel):
         pred_df = pred_df.rename(
             columns={labels_after[i]: labels_before[i] for i in range(len(labels_before))}
         )
+
+        explainer = shap.TreeExplainer(self.model)
+        explanation = explainer(dk.data_dictionary["prediction_features"])
+        shap.plots.beeswarm(explanation)
+
         return (pred_df, dk.do_predict)
