@@ -71,6 +71,7 @@ dependencies = [
   "pytz",
   "packaging",
   "freqtrade-client",
+  "tensorflow>=2.18.0",
 ]
 
 [project.optional-dependencies]

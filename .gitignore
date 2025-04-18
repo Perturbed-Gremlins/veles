@@ -4,12 +4,12 @@ config*.json
 *.sqlite-shm
 *.sqlite-wal
 logfile.txt
+!user_data/config
 user_data/*
 !user_data/strategy/sample_strategy.py
 !user_data/notebooks
 !user_data/models
 !user_data/freqaimodels
-user_data/freqaimodels/*
 user_data/models/*
 user_data/notebooks/*
 freqtrade-plot.html
@@ -116,3 +116,6 @@ target/
 !config_examples/config_freqai.example.json
 
 docker-compose-*.yml
+!/user_data/config/
+!/user_data/strategy/
+!/user_data/freqaimodels/XGBoostBinaryClassifier.py
