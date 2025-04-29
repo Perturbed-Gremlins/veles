@@ -157,6 +157,6 @@ class XGBoostClassifier(BaseClassifierModel):
 
         explainer = shap.TreeExplainer(self.model)
         explanation = explainer(dk.data_dictionary["prediction_features"])
-        shap.plots.beeswarm(explanation)
+        shap.plots.bar(explanation)
 
         return (pred_df, dk.do_predict)

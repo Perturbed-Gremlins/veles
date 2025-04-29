@@ -105,6 +105,13 @@ class XGBoostClassifierStrategy(IStrategy):
         """
         stochrsi_result = ta.STOCHRSI(dataframe, timeperiod=period)
         dataframe["%-stochrsi-k-period"], dataframe["%-stochrsi-d-period"] = stochrsi_result["fastk"], stochrsi_result["fastd"]
+        # TEMA - Triple Exponential Moving Average
+        dataframe["%-tema-period"] = ta.TEMA(dataframe, timeperiod=period)
+
+
+        # EMA - Exponential Moving Average
+        dataframe['%-ema-period'] = ta.EMA(dataframe, timeperiod=period)
+
         return dataframe
 
     def feature_engineering_expand_basic(
@@ -140,6 +147,19 @@ class XGBoostClassifierStrategy(IStrategy):
         dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-ema-200"] = ta.EMA(dataframe, timeperiod=200)
         """
+        heikinashi = qtpylib.heikinashi(dataframe)
+        dataframe['%-ha_open'] = heikinashi['open']
+        dataframe['%-ha_close'] = heikinashi['close']
+        dataframe['%-ha_high'] = heikinashi['high']
+        dataframe['%-ha_low'] = heikinashi['low']
+
+        dataframe["%-minus_di"] = ta.MINUS_DI(dataframe)
+
+
+        # RSI
+        dataframe["%-rsi"] = ta.RSI(dataframe)
+
+
 
         # we believe that volume and closing price is helpful for predicting next price
         dataframe["%-raw_volume"] = dataframe["volume"]
@@ -285,7 +305,7 @@ class XGBoostClassifierStrategy(IStrategy):
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
         enter_long_conditions = [
             df["do_predict"] == 1,
-            df["up"] >0.7,
+            df['&s-up_or_down'] == "up",
         ]
 
         if enter_long_conditions:
@@ -295,7 +315,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         enter_short_conditions = [
             df["do_predict"] == 1,
-            df["down"] > 0.7,
+            df['&s-up_or_down'] == "down",
         ]
 
         if enter_short_conditions:
