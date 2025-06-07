@@ -18,41 +18,61 @@ RUN mkdir /freqtrade \
   # Allow sudoers
   && echo "ftuser ALL=(ALL) NOPASSWD: /bin/chown" >> /etc/sudoers
 
+
 WORKDIR /freqtrade
 
 # Install dependencies
 FROM base as python-deps
 RUN  apt-get update \
-  && apt-get -y install build-essential libssl-dev git libffi-dev libgfortran5 pkg-config cmake gcc \
-  && apt-get clean \
-  && pip install --upgrade pip wheel
+  && apt-get -y install build-essential wget libssl-dev git libffi-dev libgfortran5 pkg-config cmake gcc \
+  && apt-get clean
 
-# Install TA-lib
-COPY build_helpers/* /tmp/
-RUN cd /tmp && /tmp/install_ta-lib.sh && rm -r /tmp/*ta-lib*
-ENV LD_LIBRARY_PATH /usr/local/lib
+RUN  wget https://github.com/ta-lib/ta-lib/releases/download/v0.6.4/ta-lib_0.6.4_amd64.deb
+RUN dpkg -i ta-lib_0.6.4_amd64.deb
 
 # Install dependencies
-COPY --chown=ftuser:ftuser requirements.txt requirements-hyperopt.txt /freqtrade/
+COPY --chown=ftuser:ftuser uv.lock /freqtrade/
 USER ftuser
-RUN  pip install --user --no-cache-dir "numpy<2.0" \
-  && pip install --user --no-cache-dir -r requirements-hyperopt.txt
+
+# Download the latest installer
+ADD --chown=ftuser:ftuser https://astral.sh/uv/install.sh /uv-installer.sh
+
+# Run the installer then remove it
+RUN sh /uv-installer.sh
+
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/home/ftuser/.local/bin/:$PATH"
+
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
+
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/home/ftuser/.cache/uv,uid=1000,gid=1000 \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-dev
 
 # Copy dependencies to runtime-image
 FROM base as runtime-image
 COPY --from=python-deps /usr/local/lib /usr/local/lib
+COPY --from=python-deps /usr/lib /usr/local/lib
 ENV LD_LIBRARY_PATH /usr/local/lib
 
 COPY --from=python-deps --chown=ftuser:ftuser /home/ftuser/.local /home/ftuser/.local
+
 
 USER ftuser
 # Install and execute
 COPY --chown=ftuser:ftuser . /freqtrade/
 
-RUN pip install -e . --user --no-cache-dir --no-build-isolation \
-  && mkdir /freqtrade/user_data/ \
-  && freqtrade install-ui
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/home/ftuser/.local/bin/:$PATH"
 
-ENTRYPOINT ["freqtrade"]
-# Default to trade mode
-CMD [ "trade" ]
+
+RUN --mount=type=cache,target=/home/ftuser/.cache/uv,uid=1000,gid=1000 \
+    uv sync --locked --no-dev  \
+  && mkdir /freqtrade/generated_data/ \
+  && uv run freqtrade install-ui

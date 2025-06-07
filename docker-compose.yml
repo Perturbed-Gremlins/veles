@@ -1,5 +1,16 @@
 ---
 services:
+#  files-init:
+#    build:
+#      context: .
+#    user: root
+#    restart: "no"
+#    env_file:
+#      .env
+#    entrypoint: |
+#      /bin/sh -c "chown ftuser:ftuser /generated_data"
+#    volumes:
+#      - veles-freqtrade-data:/generated_data
   freqtrade:
     # image: freqtradeorg/freqtrade:stable
     # image: freqtradeorg/freqtrade:develop
@@ -20,7 +31,7 @@ services:
     restart: unless-stopped
     container_name: freqtrade-veles_prod
     volumes:
-      - "./user_data:/freqtrade/user_data"
+      - veles-freqtrade-data:/freqtrade/generated_data
     # Expose api on port 8080 (localhost only)
     # Please read the https://www.freqtrade.io/en/stable/rest-api/ documentation
     # for more information.
@@ -30,11 +41,15 @@ services:
       .env
     # Default command used when running `docker compose up`
     command: >
-      trade
-      --logfile /freqtrade/user_data/logs/freqtrade.log
-      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
-      --config /freqtrade/user_data/config/prod_config.json
-      --strategy-path user_data/strategy/
+      uv run freqtrade trade
+      --logfile /freqtrade/generated_data/freqtrade.log
+      --db-url sqlite:////freqtrade/generated_data/tradesv3.sqlite
+      --config /freqtrade/user_data/config/user_config_freqai_xgb.json
+      --strategy-path /freqtrade/user_data/strategy/
       --strategy XGBoostClassifierStrategy
-      --freqaimodel-path user_data/freqaimodels/
+      --freqaimodel-path /freqtrade/user_data/freqaimodels/
       --freqaimodel XGBoostClassifier
+#    depends_on:
+#      - files-init
+volumes:
+  veles-freqtrade-data:
