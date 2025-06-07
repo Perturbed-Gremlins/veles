@@ -1,4 +1,4 @@
-FROM python:3.12.10-slim-bookworm as base
+FROM python:3.13.4-slim-bookworm as base
 
 # Setup env
 ENV LANG C.UTF-8
@@ -17,7 +17,6 @@ RUN mkdir /freqtrade \
   && chown ftuser:ftuser /freqtrade \
   # Allow sudoers
   && echo "ftuser ALL=(ALL) NOPASSWD: /bin/chown" >> /etc/sudoers
-
 
 WORKDIR /freqtrade
 

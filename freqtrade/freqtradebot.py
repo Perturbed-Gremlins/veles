@@ -467,7 +467,7 @@ class FreqtradeBot(LoggingMixin):
                     order = trade.select_order("stoploss", False)
                 if order:
                     logger.info(
-                        f"Updating {trade.exit_side}-fee on trade {trade}"
+                        f"Updating {trade.exit_side}-fee on trade {trade} "
                         f"for order {order.order_id}."
                     )
                     self.update_trade_state(
@@ -485,7 +485,7 @@ class FreqtradeBot(LoggingMixin):
                     open_order = trade.select_order(trade.entry_side, True)
                     if order and open_order is None:
                         logger.info(
-                            f"Updating {trade.entry_side}-fee on trade {trade}"
+                            f"Updating {trade.entry_side}-fee on trade {trade} "
                             f"for order {order.order_id}."
                         )
                         self.update_trade_state(trade, order.order_id, send_msg=False)
@@ -760,12 +760,14 @@ class FreqtradeBot(LoggingMixin):
         current_exit_profit = trade.calc_profit_ratio(current_exit_rate)
 
         min_entry_stake = self.exchange.get_min_pair_stake_amount(
-            trade.pair, current_entry_rate, 0.0
+            trade.pair, current_entry_rate, 0.0, trade.leverage
         )
         min_exit_stake = self.exchange.get_min_pair_stake_amount(
-            trade.pair, current_exit_rate, self.strategy.stoploss
+            trade.pair, current_exit_rate, self.strategy.stoploss, trade.leverage
         )
-        max_entry_stake = self.exchange.get_max_pair_stake_amount(trade.pair, current_entry_rate)
+        max_entry_stake = self.exchange.get_max_pair_stake_amount(
+            trade.pair, current_entry_rate, trade.leverage
+        )
         stake_available = self.wallets.get_available_stake_amount()
         logger.debug(f"Calling adjust_trade_position for pair {trade.pair}")
         stake_amount, order_tag = self.strategy._adjust_trade_position_internal(
@@ -1044,7 +1046,7 @@ class FreqtradeBot(LoggingMixin):
             trade.adjust_stop_loss(trade.open_rate, stoploss, initial=True)
 
         else:
-            # This is additional entry, we reset fee_open_currency so timeout checking can work
+            # This is additional entry, we reset fee_open_currency so fee checking can work
             trade.is_open = True
             trade.fee_open_currency = None
             trade.set_funding_fees(funding_fees)
@@ -1474,7 +1476,11 @@ class FreqtradeBot(LoggingMixin):
                 self.handle_protections(trade.pair, trade.trade_direction)
                 return True
 
-        if not trade.has_open_position or not trade.is_open:
+        if (
+            not trade.has_open_position
+            or not trade.is_open
+            or (trade.has_open_orders and self.exchange.get_option("stoploss_blocks_assets", True))
+        ):
             # The trade can be closed already (sell-order fill confirmation came in this iteration)
             return False
 
@@ -2470,10 +2476,9 @@ class FreqtradeBot(LoggingMixin):
         return None
 
     def handle_order_fee(self, trade: Trade, order_obj: Order, order: CcxtOrder) -> None:
-        # Try update amount (binance-fix)
+        # Try update amount (binance-fix - but also applies to different exchanges)
         try:
-            fee_abs = self.get_real_amount(trade, order, order_obj)
-            if fee_abs is not None:
+            if (fee_abs := self.get_real_amount(trade, order, order_obj)) is not None:
                 order_obj.ft_fee_base = fee_abs
         except DependencyException as exception:
             logger.warning("Could not update trade amount: %s", exception)
