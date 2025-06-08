@@ -1,4 +1,4 @@
-FROM python:3.13.4-slim-bookworm as base
+FROM python:3.12-slim-bookworm as base
 
 # Setup env
 ENV LANG C.UTF-8
@@ -72,6 +72,6 @@ ENV PATH="/home/ftuser/.local/bin/:$PATH"
 
 
 RUN --mount=type=cache,target=/home/ftuser/.cache/uv,uid=1000,gid=1000 \
-    uv sync --locked --no-dev  \
+    uv sync --locked --no-dev --all-extras  \
   && mkdir /freqtrade/generated_data/ \
   && uv run freqtrade install-ui
