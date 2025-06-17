@@ -1,4 +1,4 @@
-FROM python:3.12.9-slim-bookworm as base
+FROM python:3.12-slim-bookworm as base
 
 # Setup env
 ENV LANG C.UTF-8
@@ -20,39 +20,49 @@ RUN mkdir /freqtrade \
 
 WORKDIR /freqtrade
 
-# Install dependencies
-FROM base as python-deps
-RUN  apt-get update \
-  && apt-get -y install build-essential libssl-dev git libffi-dev libgfortran5 pkg-config cmake gcc \
-  && apt-get clean \
-  && pip install --upgrade pip wheel
-
-# Install TA-lib
-COPY build_helpers/* /tmp/
-RUN cd /tmp && /tmp/install_ta-lib.sh && rm -r /tmp/*ta-lib*
-ENV LD_LIBRARY_PATH /usr/local/lib
-
-# Install dependencies
-COPY --chown=ftuser:ftuser requirements.txt requirements-hyperopt.txt /freqtrade/
-USER ftuser
-RUN  pip install --user --no-cache-dir "numpy<2.0" \
-  && pip install --user --no-cache-dir -r requirements-hyperopt.txt
-
 # Copy dependencies to runtime-image
 FROM base as runtime-image
-COPY --from=python-deps /usr/local/lib /usr/local/lib
+
 ENV LD_LIBRARY_PATH /usr/local/lib
 
-COPY --from=python-deps --chown=ftuser:ftuser /home/ftuser/.local /home/ftuser/.local
+RUN  apt-get update \
+  && apt-get -y install git build-essential wget libtool libssl-dev git libffi-dev libgfortran5 pkg-config cmake gcc autoconf \
+  && apt-get clean
 
+RUN wget https://github.com/ta-lib/ta-lib/releases/download/v0.6.4/ta-lib-0.6.4-src.tar.gz  && tar -xzf ta-lib-0.6.4-src.tar.gz && cd ta-lib-0.6.4 &&  \
+    ./configure -- && make && sudo make install
+
+
+
+
+#
+#
+# Install dependencies
 USER ftuser
+
+# Download the latest installer
+ADD --chown=ftuser:ftuser https://astral.sh/uv/install.sh /uv-installer.sh
+
+# Run the installer then remove it
+RUN sh /uv-installer.sh
+
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/home/ftuser/.local/bin/:$PATH"
+
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
+
+
 # Install and execute
 COPY --chown=ftuser:ftuser . /freqtrade/
 
-RUN pip install -e . --user --no-cache-dir --no-build-isolation \
-  && mkdir /freqtrade/user_data/ \
-  && freqtrade install-ui
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/home/ftuser/.local/bin/:$PATH"
 
-ENTRYPOINT ["freqtrade"]
-# Default to trade mode
-CMD [ "trade" ]
+
+RUN uv sync --no-dev --all-extras  \
+  && mkdir /freqtrade/generated_data/ \
+  && uv run freqtrade install-ui

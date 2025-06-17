@@ -180,7 +180,7 @@ Mandatory parameters are marked as **Required**, which means that they are requi
 | `minimal_roi` | **Required.** Set the threshold as ratio the bot will use to exit a trade. [More information below](#understand-minimal_roi). [Strategy Override](#parameters-in-the-strategy). <br> **Datatype:** Dict
 | `stoploss` |  **Required.** Value as ratio of the stoploss used by the bot. More details in the [stoploss documentation](stoploss.md). [Strategy Override](#parameters-in-the-strategy).  <br> **Datatype:** Float (as ratio)
 | `trailing_stop` | Enables trailing stoploss (based on `stoploss` in either configuration or strategy file). More details in the [stoploss documentation](stoploss.md#trailing-stop-loss). [Strategy Override](#parameters-in-the-strategy). <br> **Datatype:** Boolean
-| `trailing_stop_positive` | Changes stoploss once profit has been reached. More details in the [stoploss documentation](stoploss.md#trailing-stop-loss-custom-positive-loss). [Strategy Override](#parameters-in-the-strategy). <br> **Datatype:** Float
+| `trailing_stop_positive` | Changes stoploss once profit has been reached. More details in the [stoploss documentation](stoploss.md#trailing-stop-loss-different-positive-loss). [Strategy Override](#parameters-in-the-strategy). <br> **Datatype:** Float
 | `trailing_stop_positive_offset` | Offset on when to apply `trailing_stop_positive`. Percentage value which should be positive. More details in the [stoploss documentation](stoploss.md#trailing-stop-loss-only-once-the-trade-has-reached-a-certain-offset). [Strategy Override](#parameters-in-the-strategy). <br>*Defaults to `0.0` (no offset).* <br> **Datatype:** Float
 | `trailing_only_offset_is_reached` | Only apply trailing stoploss when the offset is reached. [stoploss documentation](stoploss.md). [Strategy Override](#parameters-in-the-strategy). <br>*Defaults to `false`.*  <br> **Datatype:** Boolean
 | `fee` | Fee used during backtesting / dry-runs. Should normally not be configured, which has freqtrade fall back to the exchange default fee. Set as ratio (e.g. 0.001 = 0.1%). Fee is applied twice for each trade, once when buying, once when selling. <br> **Datatype:** Float (as ratio)
@@ -205,7 +205,7 @@ Mandatory parameters are marked as **Required**, which means that they are requi
 | `exit_pricing.use_order_book` | Enable exiting of open trades using [Order Book Exit](#exit-price-with-orderbook-enabled). <br> *Defaults to `true`.*<br> **Datatype:** Boolean
 | `exit_pricing.order_book_top` | Bot will use the top N rate in Order Book "price_side" to exit. I.e. a value of 2 will allow the bot to pick the 2nd ask rate in [Order Book Exit](#exit-price-with-orderbook-enabled)<br>*Defaults to `1`.* <br> **Datatype:** Positive Integer
 | `custom_price_max_distance_ratio` | Configure maximum distance ratio between current and custom entry or exit price. <br>*Defaults to `0.02` 2%).*<br> **Datatype:** Positive float
-| | **TODO**
+| | **Order/Signal handling**
 | `use_exit_signal` | Use exit signals produced by the strategy in addition to the `minimal_roi`. <br>Setting this to false disables the usage of `"exit_long"` and `"exit_short"` columns. Has no influence on other exit methods (Stoploss, ROI, callbacks). [Strategy Override](#parameters-in-the-strategy). <br>*Defaults to `true`.* <br> **Datatype:** Boolean
 | `exit_profit_only` | Wait until the bot reaches `exit_profit_offset` before taking an exit decision. [Strategy Override](#parameters-in-the-strategy). <br>*Defaults to `false`.* <br> **Datatype:** Boolean
 | `exit_profit_offset` | Exit-signal is only active above this value. Only active in combination with `exit_profit_only=True`. [Strategy Override](#parameters-in-the-strategy). <br>*Defaults to `0.0`.* <br> **Datatype:** Float (as ratio)
@@ -672,7 +672,7 @@ Should you experience problems you suspect are caused by websockets, you can dis
 }
 ```
 
-Should you be required to use a proxy, please refer to the [proxy section](#using-proxy-with-freqtrade) for more information.
+Should you be required to use a proxy, please refer to the [proxy section](#using-a-proxy-with-freqtrade) for more information.
 
 !!! Info "Rollout"
     We're implementing this out slowly, ensuring stability of your bots.

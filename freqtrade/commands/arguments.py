@@ -45,7 +45,8 @@ ARGS_COMMON_OPTIMIZE = [
     "pairs",
 ]
 
-ARGS_BACKTEST = ARGS_COMMON_OPTIMIZE + [
+ARGS_BACKTEST = [
+    *ARGS_COMMON_OPTIMIZE,
     "position_stacking",
     "enable_protections",
     "dry_run_wallet",
@@ -58,7 +59,8 @@ ARGS_BACKTEST = ARGS_COMMON_OPTIMIZE + [
     "freqai_backtest_live_models",
 ]
 
-ARGS_HYPEROPT = ARGS_COMMON_OPTIMIZE + [
+ARGS_HYPEROPT = [
+    *ARGS_COMMON_OPTIMIZE,
     "hyperopt",
     "hyperopt_path",
     "position_stacking",
@@ -76,9 +78,10 @@ ARGS_HYPEROPT = ARGS_COMMON_OPTIMIZE + [
     "disableparamexport",
     "hyperopt_ignore_missing_space",
     "analyze_per_epoch",
+    "early_stop",
 ]
 
-ARGS_EDGE = ARGS_COMMON_OPTIMIZE + ["stoploss_range"]
+ARGS_EDGE = [*ARGS_COMMON_OPTIMIZE, "stoploss_range"]
 
 ARGS_LIST_STRATEGIES = [
     "strategy_path",
@@ -127,7 +130,7 @@ ARGS_BUILD_STRATEGY = ["user_data_dir", "strategy", "strategy_path", "template"]
 
 ARGS_CONVERT_DATA_TRADES = ["pairs", "format_from_trades", "format_to", "erase", "exchange"]
 ARGS_CONVERT_DATA = ["pairs", "format_from", "format_to", "erase", "exchange"]
-ARGS_CONVERT_DATA_OHLCV = ARGS_CONVERT_DATA + ["timeframes", "trading_mode", "candle_types"]
+ARGS_CONVERT_DATA_OHLCV = [*ARGS_CONVERT_DATA, "timeframes", "trading_mode", "candle_types"]
 
 ARGS_CONVERT_TRADES = [
     "pairs",

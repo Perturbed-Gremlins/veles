@@ -32,7 +32,7 @@
         "use_order_book": true,
         "order_book_top": 1
     },
-    "exchange": {
+  "exchange": {
         "name": "binance",
         "key": "",
         "secret": "",
@@ -47,9 +47,9 @@
     },
     "pairlists": [
             {"method": "StaticPairList"}
-    ],
+],
     "telegram": {
-        "enabled": false,
+        "enabled": true,
         "token": "",
         "chat_id": ""
     },
@@ -88,15 +88,14 @@
             "eval_metric": ["auc", "logloss", "error"]
         }
     },
-
-    "api_server": {
-        "enabled": false,
-        "listen_ip_address": "127.0.0.1",
+   "api_server": {
+        "enabled": true,
+        "listen_ip_address": "0.0.0.0",
         "listen_port": 8080,
         "verbosity": "error",
-        "enable_openapi": false,
-        "jwt_secret_key": "fed71ca28b884e297c99e37ffa807526a03f63c7651d5c636b4cfd50185a92cb",
-        "ws_token": "2SfOX8FKjQsUqUulkdBcgEy91lKbdXYxIg",
+        "enable_openapi": true,
+        "jwt_secret_key": "",
+        "ws_token": "",
         "CORS_origins": [],
         "username": "",
         "password": ""

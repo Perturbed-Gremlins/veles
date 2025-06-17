@@ -305,7 +305,7 @@ class XGBoostClassifierStrategy(IStrategy):
     def populate_entry_trend(self, df: DataFrame, metadata: dict) -> DataFrame:
         enter_long_conditions = [
             df["do_predict"] == 1,
-            df['&s-up_or_down'] == "up",
+            df["up"] >0.5,
         ]
 
         if enter_long_conditions:
@@ -315,7 +315,7 @@ class XGBoostClassifierStrategy(IStrategy):
 
         enter_short_conditions = [
             df["do_predict"] == 1,
-            df['&s-up_or_down'] == "down",
+            df["down"] > 0.5,
         ]
 
         if enter_short_conditions:
