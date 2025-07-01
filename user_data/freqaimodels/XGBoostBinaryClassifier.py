@@ -9,8 +9,9 @@ from pandas.api.types import is_integer_dtype
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 from xgboost.callback import EarlyStopping
+
+from freqtrade.freqai.shapley import ShapleyCallback
 from freqtrade.freqai.tensorboard import TBCallback
-import shap
 
 
 from freqtrade.freqai.base_models.BaseClassifierModel import BaseClassifierModel
@@ -26,7 +27,7 @@ TEST_FEATURES_KEY = "test_features"
 TEST_LABELS_KEY = "test_labels"
 
 
-class XGBoostClassifier(BaseClassifierModel):
+class XGBoostBinaryClassifier(BaseClassifierModel):
     """
     User created prediction model. The class inherits IFreqaiModel, which
     means it has full access to all Frequency AI functionality. Typically,
@@ -98,7 +99,15 @@ class XGBoostClassifier(BaseClassifierModel):
         )
 
         # loading the params, and fititng the model
-        model = XGBClassifier(**self.model_training_parameters, callbacks=[early_stop, TBCallback(dk.data_path)])
+
+
+
+        shap_callback = ShapleyCallback(
+            prediction_features=dk.data_dictionary["test_features"], 
+            data_path=dk.data_path,
+            model_filename=dk.model_filename
+        )
+        model = XGBClassifier(**self.model_training_parameters, callbacks=[early_stop, TBCallback(dk.data_path), shap_callback])
         model.fit(X=X, y=y, eval_set=eval_set, sample_weight=train_weights, xgb_model=init_model)
 
         return model
@@ -155,8 +164,6 @@ class XGBoostClassifier(BaseClassifierModel):
             columns={labels_after[i]: labels_before[i] for i in range(len(labels_before))}
         )
 
-        explainer = shap.TreeExplainer(self.model)
-        explanation = explainer(dk.data_dictionary["prediction_features"])
-        shap.plots.bar(explanation)
+
 
         return (pred_df, dk.do_predict)
