@@ -16,7 +16,7 @@
         "exit_timeout_count": 0,
         "unit": "minutes"
     },
-    "timeframe": "5m",
+    "timeframe": "1m",
     "entry_pricing": {
         "price_side": "same",
         "use_order_book": true,
@@ -57,18 +57,18 @@
         "enabled": true,
         "activate_tensorboard": true,
         "purge_old_models": 2,
-        "train_period_days": 180,
+        "train_period_days": 90,
         "backtest_period_days": 90,
-        "live_retrain_hours": 0,
+        "live_retrain_hours": 24,
         "identifier": "xgbclassifier-initial",
         "feature_parameters": {
             "include_timeframes": [
-                "5m"
+                "1m"
             ],
             "include_corr_pairlist": [
             ],
             "label_period_candles": 1,
-            "include_shifted_candles": 12,
+            "include_shifted_candles": 10,
             "DI_threshold": 0,
             "weight_factor": 0,
             "principal_component_analysis": false,

@@ -361,20 +361,13 @@ class XGBoostClassifierStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                qtpylib.crossed_above(dataframe['ema50'], dataframe['ema100'])
-                &(dataframe['ha_close'] < dataframe['ema20'])
-                &(dataframe['ha_open'] > dataframe['ha_close'])
-                |
-                (
-                    (qtpylib.crossed_above(dataframe["rsi"], self.sell_rsi.value))
-                    | (qtpylib.crossed_above(dataframe["fastd"], FAST_D))
-                )
-                & (dataframe["tema"] < dataframe["tema"].shift(FALING_TEMA_PERIOD))
-                | (dataframe["adx"] > ADX)
-                & (dataframe["minus_di"] > MINUS_DI)
+                dataframe["down"] > 0.5
 
             ) ,
             'exit_long'] = 1
+
+
+
         return dataframe
 
     # def confirm_trade_entry(

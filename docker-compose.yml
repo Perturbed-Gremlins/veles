@@ -48,7 +48,7 @@ services:
       --strategy-path /freqtrade/user_data/strategy/
       --strategy XGBoostClassifierStrategy
       --freqaimodel-path /freqtrade/user_data/freqaimodels/
-      --freqaimodel XGBoostClassifier
+      --freqaimodel XGBoostBinaryClassifier
 #    depends_on:
 #      - files-init
 volumes:
