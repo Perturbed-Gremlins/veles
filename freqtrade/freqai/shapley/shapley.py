@@ -57,4 +57,10 @@ class ShapleyCallback(xgboost.callback.TrainingCallback):
             cloudpickle.dump(explanation, fp)
         logger.info(f"SHAP explanation saved to: {explanation_path}")
         
+        # Save prediction features for testing purposes
+        features_path = self.data_path / f"{self.model_filename}_prediction_features.pkl"
+        with features_path.open("wb") as fp:
+            cloudpickle.dump(self.prediction_features, fp)
+        logger.info(f"Prediction features saved to: {features_path}")
+        
         return model

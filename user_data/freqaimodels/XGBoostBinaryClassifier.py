@@ -100,8 +100,6 @@ class XGBoostBinaryClassifier(BaseClassifierModel):
 
         # loading the params, and fititng the model
 
-
-
         shap_callback = ShapleyCallback(
             prediction_features=dk.data_dictionary["test_features"], 
             data_path=dk.data_path,
