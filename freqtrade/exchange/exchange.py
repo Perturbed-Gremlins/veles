@@ -21,6 +21,7 @@ from ccxt import TICK_SIZE
 from dateutil import parser
 from pandas import DataFrame, concat
 
+from freqtrade.configuration import remove_exchange_credentials
 from freqtrade.constants import (
     DEFAULT_AMOUNT_RESERVE_PERCENT,
     DEFAULT_TRADES_COLUMNS,
@@ -64,7 +65,6 @@ from freqtrade.exceptions import (
 )
 from freqtrade.exchange.common import (
     API_FETCH_ORDER_RETRY_COUNT,
-    remove_exchange_credentials,
     retrier,
     retrier_async,
 )
@@ -137,6 +137,7 @@ class Exchange:
         "ohlcv_has_history": True,  # Some exchanges (Kraken) don't provide history via ohlcv
         "ohlcv_partial_candle": True,
         "ohlcv_require_since": False,
+        "always_require_api_keys": False,  # purge API keys for Dry-run. Must default to false.
         # Check https://github.com/ccxt/ccxt/issues/10767 for removal of ohlcv_volume_currency
         "ohlcv_volume_currency": "base",  # "base" or "quote"
         "tickers_have_quoteVolume": True,
@@ -199,6 +200,19 @@ class Exchange:
 
         self._config.update(config)
 
+        # Leverage properties
+        self.trading_mode: TradingMode = config.get("trading_mode", TradingMode.SPOT)
+        self.margin_mode: MarginMode = (
+            MarginMode(config.get("margin_mode")) if config.get("margin_mode") else MarginMode.NONE
+        )
+        self.liquidation_buffer = config.get("liquidation_buffer", 0.05)
+
+        exchange_conf: ExchangeConfig = exchange_config if exchange_config else config["exchange"]
+
+        # Deep merge ft_has with default ft_has options
+        # Must be called before ft_has is used.
+        self.build_ft_has(exchange_conf)
+
         # Holds last candle refreshed time of each pair
         self._pairs_last_refresh_time: dict[PairWithTimeframe, int] = {}
         # Timestamp of last markets refresh
@@ -227,32 +241,16 @@ class Exchange:
         if config["dry_run"]:
             logger.info("Instance is running with dry_run enabled")
         logger.info(f"Using CCXT {ccxt.__version__}")
-        exchange_conf: dict[str, Any] = exchange_config if exchange_config else config["exchange"]
-        remove_exchange_credentials(exchange_conf, config.get("dry_run", False))
-        self.log_responses = exchange_conf.get("log_responses", False)
 
-        # Leverage properties
-        self.trading_mode: TradingMode = config.get("trading_mode", TradingMode.SPOT)
-        self.margin_mode: MarginMode = (
-            MarginMode(config.get("margin_mode")) if config.get("margin_mode") else MarginMode.NONE
+        # Don't remove exchange credentials for dry-run or if always_require_api_keys is set
+        remove_exchange_credentials(
+            exchange_conf,
+            not self._ft_has["always_require_api_keys"] and config.get("dry_run", False),
         )
-        self.liquidation_buffer = config.get("liquidation_buffer", 0.05)
-
-        # Deep merge ft_has with default ft_has options
-        self._ft_has = deep_merge_dicts(self._ft_has, deepcopy(self._ft_has_default))
-        if self.trading_mode == TradingMode.FUTURES:
-            self._ft_has = deep_merge_dicts(self._ft_has_futures, self._ft_has)
-        if exchange_conf.get("_ft_has_params"):
-            self._ft_has = deep_merge_dicts(exchange_conf.get("_ft_has_params"), self._ft_has)
-            logger.info("Overriding exchange._ft_has with config params, result: %s", self._ft_has)
+        self.log_responses = exchange_conf.get("log_responses", False)
 
         # Assign this directly for easy access
         self._ohlcv_partial_candle = self._ft_has["ohlcv_partial_candle"]
-
-        self._max_trades_limit = self._ft_has["trades_limit"]
-
-        self._trades_pagination = self._ft_has["trades_pagination"]
-        self._trades_pagination_arg = self._ft_has["trades_pagination_arg"]
 
         # Initialize ccxt objects
         ccxt_config = self._ccxt_config
@@ -877,9 +875,23 @@ class Exchange:
             (trading_mode, margin_mode) not in self._supported_trading_mode_margin_pairs
         ):
             mm_value = margin_mode and margin_mode.value
-            raise OperationalException(
-                f"Freqtrade does not support {mm_value} {trading_mode} on {self.name}"
+            raise ConfigurationError(
+                f"Freqtrade does not support '{mm_value}' '{trading_mode}' on {self.name}."
             )
+
+    def build_ft_has(self, exchange_conf: ExchangeConfig) -> None:
+        """
+        Deep merge ft_has with default ft_has options
+        and with exchange_conf._ft_has_params if available.
+        This is called on initialization of the exchange object.
+        It must be called before ft_has is used.
+        """
+        self._ft_has = deep_merge_dicts(self._ft_has, deepcopy(self._ft_has_default))
+        if self.trading_mode == TradingMode.FUTURES:
+            self._ft_has = deep_merge_dicts(self._ft_has_futures, self._ft_has)
+        if exchange_conf.get("_ft_has_params"):
+            self._ft_has = deep_merge_dicts(exchange_conf.get("_ft_has_params"), self._ft_has)
+            logger.info("Overriding exchange._ft_has with config params, result: %s", self._ft_has)
 
     def get_option(self, param: str, default: Any | None = None) -> Any:
         """
@@ -2995,7 +3007,7 @@ class Exchange:
         returns: List of dicts containing trades, the next iteration value (new "since" or trade_id)
         """
         try:
-            trades_limit = self._max_trades_limit
+            trades_limit = self._ft_has["trades_limit"]
             # fetch trades asynchronously
             if params:
                 logger.debug("Fetching trades for pair %s, params: %s ", pair, params)
@@ -3039,7 +3051,7 @@ class Exchange:
         """
         if not trades:
             return None
-        if self._trades_pagination == "id":
+        if self._ft_has["trades_pagination"] == "id":
             return trades[-1].get("id")
         else:
             return trades[-1].get("timestamp")
@@ -3057,7 +3069,7 @@ class Exchange:
     ) -> tuple[str, list[list]]:
         """
         Asynchronously gets trade history using fetch_trades
-        use this when exchange uses id-based iteration (check `self._trades_pagination`)
+        use this when exchange uses id-based iteration (check `self._ft_has["trades_pagination"]`)
         :param pair: Pair to fetch trade data for
         :param since: Since as integer timestamp in milliseconds
         :param until: Until as integer timestamp in milliseconds
@@ -3083,7 +3095,7 @@ class Exchange:
         while True:
             try:
                 t, from_id_next = await self._async_fetch_trades(
-                    pair, params={self._trades_pagination_arg: from_id}
+                    pair, params={self._ft_has["trades_pagination_arg"]: from_id}
                 )
                 if t:
                     trades.extend(t[x])
@@ -3111,7 +3123,7 @@ class Exchange:
     ) -> tuple[str, list[list]]:
         """
         Asynchronously gets trade history using fetch_trades,
-        when the exchange uses time-based iteration (check `self._trades_pagination`)
+        when the exchange uses time-based iteration (check `self._ft_has["trades_pagination"]`)
         :param pair: Pair to fetch trade data for
         :param since: Since as integer timestamp in milliseconds
         :param until: Until as integer timestamp in milliseconds
@@ -3165,9 +3177,9 @@ class Exchange:
             until = ccxt.Exchange.milliseconds()
             logger.debug(f"Exchange milliseconds: {until}")
 
-        if self._trades_pagination == "time":
+        if self._ft_has["trades_pagination"] == "time":
             return await self._async_get_trade_history_time(pair=pair, since=since, until=until)
-        elif self._trades_pagination == "id":
+        elif self._ft_has["trades_pagination"] == "id":
             return await self._async_get_trade_history_id(
                 pair=pair, since=since, until=until, from_id=from_id
             )
@@ -3429,7 +3441,8 @@ class Exchange:
                 raise InvalidOrderException(f"Amount {stake_amount} too high for {pair}")
 
             raise OperationalException(
-                "Looped through all tiers without finding a max leverage. Should never be reached"
+                f"Looped through all tiers without finding a max leverage for {pair}. "
+                "Should never be reached."
             )
 
         elif self.trading_mode == TradingMode.MARGIN:  # Search markets.limits for max lev
