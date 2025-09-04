@@ -39,8 +39,8 @@ dependencies = [
   "httpx>=0.24.1",
   "urllib3",
   "jsonschema",
-  "numpy>2.0",
-  "pandas>=2.2.0",
+  "numpy>2.0,<3.0",
+  "pandas>=2.2.0,<3.0",
   "ft-pandas-ta",
   "technical",
   "tabulate",
@@ -226,7 +226,7 @@ exclude = [
 ]
 ignore = ["freqtrade/vendor/**"]
 pythonPlatform = "All"
-pythonVersion = "3.9"
+pythonVersion = "3.11"
 
 typeCheckingMode = "off"
 # analyzeUnannotatedFunctions = false
